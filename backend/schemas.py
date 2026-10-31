@@ -1,4 +1,7 @@
+from datetime import datetime
 from typing import Literal
+from unittest.mock import Base
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -18,5 +21,17 @@ class AddCharger(BaseModel):
 
 
 class ChargingSession(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    charger_id: str
+    status: Literal["active", "complete", "stopped"]
+    target_energy_kwh: float
+    energy_delivered_kwh: float
+    start_time: datetime
+    end_time: datetime | None
+
+
+class CreateChargingSession(BaseModel):
     id: str = Field(min_length=1)
     target_energy_kwh: float = Field(gt=0)
