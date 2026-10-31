@@ -28,11 +28,11 @@ class ChargingSessionRecord(Base):
             name="ck_sessions_energy_delivered_non_negative",
         ),
         CheckConstraint(
-            "status IN ('active','completed',stopped')",
+            "status IN ('active','completed','stopped')",
             name="ck_session_status",
         ),
         Index(
-            "unique_session_sctive_per_charger",
+            "unique_session_active_per_charger",
             "charger_id",
             unique=True,
             postgresql_where=text("status='active'"),

@@ -29,14 +29,14 @@ def upgrade() -> None:
     sa.Column('energy_delivered_kwh', sa.Double(), nullable=False),
     sa.Column('start_time', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('end_time', sa.DateTime(timezone=True), nullable=True),
-    sa.CheckConstraint("status IN ('active','completed',stopped')", name='ck_session_status'),
+    sa.CheckConstraint("status IN ('active','completed','stopped')", name='ck_session_status'),
     sa.CheckConstraint('energy_delivered_kwh >= 0', name='ck_sessions_energy_delivered_non_negative'),
     sa.CheckConstraint('target_energy_kwh > 0', name='ck_sessions_target_energy_positive'),
     sa.ForeignKeyConstraint(['charger_id'], ['chargers.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_charging_sessions_charger_id'), 'charging_sessions', ['charger_id'], unique=False)
-    op.create_index('unique_session_sctive_per_charger', 'charging_sessions', ['charger_id'], unique=True, postgresql_where=sa.text("status='active'"))
+    op.create_index('unique_session_active_per_charger', 'charging_sessions', ['charger_id'], unique=True, postgresql_where=sa.text("status='active'"))
     # ### end Alembic commands ###
 
 
