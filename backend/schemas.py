@@ -1,8 +1,9 @@
 from typing import Literal
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class Charger(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: str
     status: Literal["available", "charging", "paused", "faulted"]
     max_power_kw: float=Field(gt=0)
