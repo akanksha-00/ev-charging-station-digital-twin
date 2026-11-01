@@ -1,6 +1,7 @@
 from turtle import title
-from models import ChargerRecord
-from schemas import Charger, AddCharger
+from uuid import UUID
+from models import ChargerRecord, ChargingSessionRecord
+from schemas import Charger, AddCharger, ChargingSession, CreateChargingSession
 from psycopg.errors import UniqueViolation
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -62,8 +63,69 @@ def add_charger(data: AddCharger, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=409, detail="Charger ID already exists"
             ) from error
-            
+
         raise
 
     db.refresh(charger)
     return charger
+
+
+@app.post("/sessions", response_model=ChargingSession, status_code=201)
+def start_charging_session(data: CreateChargingSession, db: Session = Depends(get_db)):
+    query = (
+        select(ChargerRecord)
+        .where(ChargerRecord.id == data.charger_id)
+        .with_for_update()
+    )
+
+    charger = db.scalar(query)
+    if charger is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Charger not found",
+        )
+    if charger.status != "available":
+        raise HTTPException(
+            status_code=409,
+            detail="Charger is not available",
+        )
+
+    charging_session = ChargingSessionRecord(
+        charger_id=data.charger_id,
+        target_energy_kwh=data.target_energy_kwh,
+    )
+
+    charger.status = "charging"
+
+    db.add(charging_session)
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+
+        if (
+            isinstance(error.orig, UniqueViolation)
+            and error.orig.diag.constraint_name == "unique_session_active_per_charger"
+        ):
+            raise HTTPException(
+                status_code=409, detail="Charger already has an active session"
+            ) from error
+
+        raise
+
+    db.refresh(charging_session)
+    return charging_session
+
+
+@app.get("/session/{session_id}", response_model=ChargingSession, status_code=200)
+def get_session(session_id: UUID, db: Session = Depends(get_db)):
+
+    charging_session = db.get(ChargingSessionRecord(), session_id)
+
+    if charging_session is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Charging Session not found",
+        )
+        
+    return charging_session

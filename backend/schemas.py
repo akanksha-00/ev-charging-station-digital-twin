@@ -25,7 +25,7 @@ class ChargingSession(BaseModel):
     
     id: UUID
     charger_id: str
-    status: Literal["active", "complete", "stopped"]
+    status: Literal["active", "completed", "stopped"]
     target_energy_kwh: float
     energy_delivered_kwh: float
     start_time: datetime
@@ -33,5 +33,5 @@ class ChargingSession(BaseModel):
 
 
 class CreateChargingSession(BaseModel):
-    id: str = Field(min_length=1)
+    charger_id: str = Field(min_length=1)
     target_energy_kwh: float = Field(gt=0)
