@@ -1,3 +1,5 @@
+# Database models
+
 from datetime import datetime
 from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func, text

@@ -1,5 +1,7 @@
+from datetime import datetime, UTC
 from turtle import title
 from uuid import UUID
+
 from models import ChargerRecord, ChargingSessionRecord
 from schemas import Charger, AddCharger, ChargingSession, CreateChargingSession
 from psycopg.errors import UniqueViolation
@@ -39,7 +41,10 @@ def get_charger_by_id(charger_id: str, db: Session = Depends(get_db)):
     charger = db.get(ChargerRecord, charger_id)
 
     if charger is None:
-        raise HTTPException(status_code=404, detail="Charger not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Charger not found",
+        )
 
     return charger
 
@@ -61,7 +66,8 @@ def add_charger(data: AddCharger, db: Session = Depends(get_db)):
 
         if isinstance(error.orig, UniqueViolation):
             raise HTTPException(
-                status_code=409, detail="Charger ID already exists"
+                status_code=409,
+                detail="Charger ID already exists",
             ) from error
 
         raise
@@ -117,15 +123,52 @@ def start_charging_session(data: CreateChargingSession, db: Session = Depends(ge
     return charging_session
 
 
-@app.get("/session/{session_id}", response_model=ChargingSession, status_code=200)
+@app.get("/sessions/{session_id}", response_model=ChargingSession, status_code=200)
 def get_session(session_id: UUID, db: Session = Depends(get_db)):
 
-    charging_session = db.get(ChargingSessionRecord(), session_id)
+    charging_session = db.get(ChargingSessionRecord, session_id)
 
     if charging_session is None:
         raise HTTPException(
             status_code=404,
             detail="Charging Session not found",
         )
+
+    return charging_session
+
+@app.post("/sessions/{session_id}/stop", response_model=ChargingSession)
+def stop_session(session_id: UUID, db: Session = Depends(get_db)):
+
+    with db.begin():
+        charging_session = db.get(ChargingSessionRecord, session_id)
+
+        if charging_session is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Charging Session not found",
+            )
+
+        charger = db.get(
+            ChargerRecord,
+            charging_session.charger_id,
+            with_for_update=True,
+        )
+
+        if charger is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Charger not found",
+            )
         
+        db.refresh(charging_session, with_for_update=True)
+        
+        if charging_session.status == "active":
+            charging_session.status = "stopped"
+            charging_session.end_time = datetime.now(UTC)
+            
+            charger.current_power_kw = 0.0
+            if charger.status in ("charging", "paused"):
+                charger.status = "available"
+        
+    db.refresh(charging_session)
     return charging_session

@@ -1,3 +1,5 @@
+# API schema
+
 from datetime import datetime
 from typing import Literal
 from unittest.mock import Base
@@ -22,7 +24,7 @@ class AddCharger(BaseModel):
 
 class ChargingSession(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: UUID
     charger_id: str
     status: Literal["active", "completed", "stopped"]
